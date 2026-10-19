@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobalShare</title>
+    <!-- Include PeerJS Library for P2P transfer -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 20px 20px 80px 20px;
+            margin: 0;
+            text-align: center;
+        }
+        h2 {
+            color: #10b981;
+            margin-bottom: 5px;
+        }
+        p.subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: #1e293b;
+            padding: 20px 10px;
+            border-radius: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s ease, background 0.1s ease;
+        }
+        .card:active {
+            transform: scale(0.97);
+            background: #334155;
+        }
+        .card.full-width {
+            grid-column: span 2;
+        }
+        .card img, .card .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .card h3 {
+            margin: 5px 0;
+            font-size: 16px;
+            color: #f8fafc;
+        }
+        .card span {
+            color: #94a3b8;
+            font-size: 12px;
+        }
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #1e293b;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #334155;
+            box-shadow: 0 -4px 6px rgba(0,0,0,0.2);
+        }
+        .nav-item {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .nav-item.active {
+            color: #10b981;
+        }
+        /* Modal / View Overlays */
+        .view-section {
+            display: none;
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 14px;
+            margin-top: 15px;
+            text-align: left;
+        }
+        .app-item {
+            background: #334155;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        input, button {
+            padding: 12px;
+            margin: 8px 0;
+            width: 100%;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+        }
+        input { background: #334155; color: #fff; text-align: center; }
+        button.action-btn { background: #10b981; color: white; font-weight: bold; cursor: pointer; }
+        button.action-btn:active { background: #059669; }
+    </style>
+</head>
+<body>
+
+    <h2>GlobalShare</h2>
+    <p class="subtitle">Batch File Transfer Engine</p>
+
+    <!-- Main Dashboard Grid -->
+    <div id="homeView">
+        <div class="dashboard-grid">
+            <div class="card" onclick="openAppsView()">
+                <div class="icon">📱</div>
+                <h3>Apps</h3>
+                <span id="appCount">0 selected</span>
+            </div>
+            <div class="card" onclick="openFilePicker('image/*')">
+                <div class="icon">🖼️</div>
+                <h3>Photos</h3>
+                <span>0 selected</span>
+            </div>
+            <div class="card" onclick="openFilePicker('video/*')">
+                <div class="icon">🎬</div>
+                <h3>Videos</h3>
+                <span>0 selected</span>
+            </div>
+            <div class="card" onclick="openFilePicker('audio/*')">
+                <div class="icon">🎵</div>
+                <h3>Music</h3>
+                <span>0 selected</span>
+            </div>
+            <div class="card full-width" onclick="openFilePicker('*/*')">
+                <div class="icon">📁</div>
+                <h3>Files</h3>
+                <span>0 selected</span>
+            </div>
+        </div>
+
+        <!-- Connection Identity Status Card -->
+        <div style="background: #1e293b; padding: 15px; border-radius: 12px; margin-top: 15px;">
+            <h4 style="margin: 0 0 5px 0; color: #38bdf8; font-size: 14px;">Your Connection ID</h4>
+            <div id="myId" style="font-size: 12px; color: #fbbf24; word-break: break-all;">Connecting...</div>
+        </div>
+    </div>
+
+    <!-- Apps View Panel -->
+    <div id="appsView" class="view-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Installed Applications</h3>
+            <button onclick="closeAppsView()" style="width: auto; padding: 6px 12px; background: #475569; font-size: 12px; color: #fff; border-radius: 6px; border: none; cursor: pointer;">Back</button>
+        </div>
+        <button class="action-btn" onclick="loadInstalledApps()">Scan Phone Apps</button>
+        <div id="appList" style="max-height: 350px; overflow-y: auto; margin-top: 15px;">
+            <p style="color: #94a3b8; font-size: 13px; text-align: center;">Tap scan to list system applications.</p>
+        </div>
+    </div>
+
+    <!-- Transfer Queue View Panel -->
+    <div id="queueView" class="view-section">
+        <h3>Transfer Queue</h3>
+        <p id="status" style="color: #38bdf8; font-size: 14px;">Status: Disconnected</p>
+        <input type="text" id="friendIdInput" placeholder="Enter Friend's ID">
+        <button class="action-btn" onclick="connectToPeer()">Connect to Peer</button>
+        <div id="incomingFiles" style="margin-top: 15px;">No active transfers.</div>
+    </div>
+
+    <!-- Hidden file input for media types -->
+    <input type="file" id="hiddenFileInput" style="display:none;" onchange="handleFileSelected(this)">
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" id="navHome" onclick="switchView('home')">
+            <span>🏠</span>
+            <span>Home</span>
+        </button>
+        <button class="nav-item" id="navQueue" onclick="switchView('queue')">
+            <span>🌐</span>
+            <span>Transfer Queue</span>
+        </button>
+    </nav>
+
+    <script>
+        let peer;
+        let conn;
+        let selectedFile = null;
+
+        function initPeer() {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('myId').innerText = id;
+            });
+            peer.on('connection', (connection) => {
+                conn = connection;
+                setupConnection();
+                document.getElementById('status').innerText = "Status: Connected!";
+            });
+        }
+
+        function connectToPeer() {
+            const friendId = document.getElementById('friendIdInput').value.trim();
+            if (!friendId) return alert("Please enter a valid ID!");
+            conn = peer.connect(friendId);
+            conn.on('open', () => {
+                document.getElementById('status').innerText = "Status: Connected!";
+            });
+            setupConnection();
+        }
+
+        function setupConnection() {
+            conn.on('data', (data) => {
+                if (data.file) {
+                    const blob = new Blob([data.file], { type: data.fileType });
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('incomingFiles').innerHTML = `
+                        <p>📥 Received: <strong>${data.fileName}</strong></p>
+                        <a href="${url}"><button class="action-btn">Download File</button></a>
+                    `;
+                }
+            });
+        }
+
+        // View Navigation
+        function switchView(view) {
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('homeView').style.display = 'none';
+            document.getElementById('appsView').style.display = 'none';
+            document.getElementById('queueView').style.display = 'none';
+
+            if (view === 'home') {
+                document.getElementById('homeView').style.display = 'block';
+                document.getElementById('navHome').classList.add('active');
+            } else if (view === 'queue') {
+                document.getElementById('queueView').style.display = 'block';
+                document.getElementById('navQueue').classList.add('active');
+            }
+        }
+
+        function openAppsView() {
+            document.getElementById('homeView').style.display = 'none';
+            document.getElementById('appsView').style.display = 'block';
+        }
+
+        function closeAppsView() {
+            document.getElementById('appsView').style.display = 'none';
+            document.getElementById('homeView').style.display = 'block';
+        }
+
+        function openFilePicker(acceptType) {
+            const input = document.getElementById('hiddenFileInput');
+            input.accept = acceptType;
+            input.click();
+        }
+
+        function handleFileSelected(input) {
+            if (input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                alert("Selected: " + selectedFile.name + "\nGo to Transfer Queue to send.");
+            }
+        }
+
+        // Native App Scanner Bridge Integration Hook
+        async function loadInstalledApps() {
+            const appListContainer = document.getElementById('appList');
+            appListContainer.innerHTML = "<p style='color: #fbbf24; text-align: center;'>Scanning installed system packages...</p>";
+
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppList) {
+                try {
+                    const result = await window.Capacitor.Plugins.AppList.getInstalledApps();
+                    appListContainer.innerHTML = "";
+                    
+                    if (!result.apps || result.apps.length === 0) {
+                        appListContainer.innerHTML = "<p style='text-align: center;'>No applications found.</p>";
+                        return;
+                    }
+
+                    document.getElementById('appCount').innerText = result.apps.length + " available";
+
+                    result.apps.forEach(app => {
+                        const appDiv = document.createElement('div');
+                        appDiv.className = 'app-item';
+                        appDiv.innerHTML = `
+                            <div style="overflow: hidden; padding-right: 10px; text-align: left;">
+                                <strong style="font-size: 14px; display: block; color: #fff;">${app.name}</strong>
+                                <small style="color: #94a3b8; font-size: 11px; word-break: break-all;">${app.packageName}</small>
+                            </div>
+                            <button style="width: auto; padding: 6px 10px; margin: 0; font-size: 12px; background: #3b82f6; border: none; border-radius: 6px; color: #fff; cursor: pointer;" onclick="selectAppToShare('${app.path}')">Send</button>
+                        `;
+                        appListContainer.appendChild(appDiv);
+                    });
+                } catch (e) {
+                    console.error(e);
+                    appListContainer.innerHTML = "<p style='color: #ef4444; text-align: center;'>Failed to query system packages.</p>";
+                }
+            } else {
+                appListContainer.innerHTML = `
+                    <p style='color: #94a3b8; font-size: 13px; text-align: center; line-height: 1.4;'>
+                        App scanner requires a compiled Android build with native permissions. (Browser preview mode active).
+                    </p>
+                `;
+            }
+        }
+
+        function selectAppToShare(path) {
+            alert("Prepared app path for transfer queue: " + path);
+            switchView('queue');
+        }
+
+        window.onload = initPeer;
+    </script>
+</body>
+</html>
