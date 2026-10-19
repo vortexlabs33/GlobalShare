@@ -45,13 +45,13 @@ jobs:
           # Inject our custom AppListPlugin.java into the correct unified package path
           mkdir -p android/app/src/main/java/com/globalshare/app/
           
-          # Create AppListPlugin.java
+          # Create AppListPlugin.java using queryIntentActivities for reliable app scanning
           cat << 'EOF' > android/app/src/main/java/com/globalshare/app/AppListPlugin.java
           package com.globalshare.app;
 
           import android.content.Intent;
-          import android.content.pm.ApplicationInfo;
           import android.content.pm.PackageManager;
+          import android.content.pm.ResolveInfo;
           import com.getcapacitor.JSArray;
           import com.getcapacitor.JSObject;
           import com.getcapacitor.Plugin;
@@ -66,18 +66,18 @@ jobs:
               @PluginMethod
               public void getInstalledApps(PluginCall call) {
                   PackageManager pm = getContext().getPackageManager();
-                  List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
+                  Intent intent = new Intent(Intent.ACTION_MAIN, null);
+                  intent.addCategory(Intent.CATEGORY_LAUNCHER);
+                  
+                  List<ResolveInfo> resolveInfos = pm.queryIntentActivities(intent, 0);
                   JSArray appList = new JSArray();
 
-                  for (ApplicationInfo packageInfo : packages) {
-                      // Keep user-installed apps (filter out system apps)
-                      if ((packageInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
-                          JSObject appObj = new JSObject();
-                          appObj.put("name", pm.getApplicationLabel(packageInfo).toString());
-                          appObj.put("packageName", packageInfo.packageName);
-                          appObj.put("path", packageInfo.sourceDir);
-                          appList.put(appObj);
-                      }
+                  for (ResolveInfo resolveInfo : resolveInfos) {
+                      JSObject appObj = new JSObject();
+                      appObj.put("name", resolveInfo.loadLabel(pm).toString());
+                      appObj.put("packageName", resolveInfo.activityInfo.packageName);
+                      appObj.put("path", resolveInfo.activityInfo.applicationInfo.sourceDir);
+                      appList.put(appObj);
                   }
 
                   JSObject ret = new JSObject();
@@ -103,7 +103,7 @@ jobs:
           }
           EOF
 
-          # Inject AndroidManifest.xml queries permission so Android allows listing apps
+          # Inject AndroidManifest.xml queries permission for launcher intents
           python3 -c '
           manifest_path = "android/app/src/main/AndroidManifest.xml"
           with open(manifest_path, "r") as f:
@@ -113,6 +113,7 @@ jobs:
               <queries>
                   <intent>
                       <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.LAUNCHER" />
                   </intent>
               </queries>
           """
