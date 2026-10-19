@@ -25,17 +25,83 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Prepare Web Assets & Sync Capacitor
+      - name: Setup Project & Generate Android
         run: |
           if [ ! -f "package.json" ]; then
             npm init -y
           fi
           npm install @capacitor/core@5.7.4 @capacitor/cli@5.7.4 @capacitor/android@5.7.4
+          npx cap init GlobalXender com.globalxender.app --web-dir www
+          
           mkdir -p www
           if [ -f "index.html" ]; then
             cp index.html www/
           fi
-          # Only sync instead of adding android from scratch, preserving your native java code
+
+          # Add android platform fresh
+          npx cap add android
+
+          # Inject our custom AppListPlugin.java into the generated Android project
+          mkdir -p android/app/src/main/java/com/vortexlabs/globalshare/
+          
+          # Create AppListPlugin.java
+          cat << 'EOF' > android/app/src/main/java/com/vortexlabs/globalshare/AppListPlugin.java
+          package com.vortexlabs.globalshare;
+
+          import android.content.Intent;
+          import android.content.pm.ApplicationInfo;
+          import android.content.pm.PackageManager;
+          import com.getcapacitor.JSArray;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+          import java.util.List;
+
+          @CapacitorPlugin(name = "AppList")
+          public class AppListPlugin extends Plugin {
+
+              @PluginMethod
+              public void getInstalledApps(PluginCall call) {
+                  PackageManager pm = getContext().getPackageManager();
+                  List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
+                  JSArray appList = new JSArray();
+
+                  for (ApplicationInfo packageInfo : packages) {
+                      // Filter out system apps if desired, or keep all user apps
+                      if ((packageInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
+                          JSObject appObj = new JSObject();
+                          appObj.put("name", pm.getApplicationLabel(packageInfo).toString());
+                          appObj.put("packageName", packageInfo.packageName);
+                          appObj.put("path", packageInfo.sourceDir);
+                          appList.put(appObj);
+                      }
+                  }
+
+                  JSObject ret = new JSObject();
+                  ret.put("apps", appList);
+                  call.resolve(ret);
+              }
+          }
+          EOF
+
+          # Update MainActivity.java to register the plugin
+          cat << 'EOF' > android/app/src/main/java/com/vortexlabs/globalshare/MainActivity.java
+          package com.vortexlabs.globalshare;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  registerPlugin(AppListPlugin.class);
+              }
+          }
+          EOF
+
           npx cap sync android
 
       - name: Grant Permission to Gradlew
