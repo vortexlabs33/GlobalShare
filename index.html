@@ -167,7 +167,7 @@
         </div>
         <button class="action-btn" onclick="loadInstalledApps()">Scan Phone Apps</button>
         <div id="appList" style="max-height: 350px; overflow-y: auto; margin-top: 15px;">
-            <p style="color: #94a3b8; font-size: 13px; text-align: center;">Tap scan to list system applications.</p>
+            <p style="color: #94a3b8; font-size: 13px; text-align: center;">Tap scan to list phone applications.</p>
         </div>
     </div>
 
@@ -274,10 +274,10 @@
             }
         }
 
-        // Native App Scanner Bridge Integration Hook (with Web Fallback Simulation)
+        // Native App Scanner Bridge Integration
         async function loadInstalledApps() {
             const appListContainer = document.getElementById('appList');
-            appListContainer.innerHTML = "<p style='color: #fbbf24; text-align: center;'>Scanning applications...</p>";
+            appListContainer.innerHTML = "<p style='color: #fbbf24; text-align: center;'>Scanning phone apps...</p>";
 
             let appsToDisplay = [];
 
@@ -288,19 +288,14 @@
                         appsToDisplay = result.apps;
                     }
                 } catch (e) {
-                    console.error(e);
+                    console.error("Native scan error:", e);
                 }
             } 
             
-            // Fallback mock apps list for browser testing so the UI works seamlessly
+            // Browser fallback safety
             if (appsToDisplay.length === 0) {
                 appsToDisplay = [
-                    { name: "WhatsApp Messenger", packageName: "com.whatsapp", path: "/data/app/whatsapp.apk" },
-                    { name: "Free Fire", packageName: "com.dts.freefireth", path: "/data/app/freefire.apk" },
-                    { name: "TikTok", packageName: "com.zhiliaoapp.musically", path: "/data/app/tiktok.apk" },
-                    { name: "Instagram", packageName: "com.instagram.android", path: "/data/app/instagram.apk" },
-                    { name: "Spotify", packageName: "com.spotify.music", path: "/data/app/spotify.apk" },
-                    { name: "Dream League Soccer", packageName: "com.firsttouchgames.dls7", path: "/data/app/dls.apk" }
+                    { name: "Browser Preview Placeholder", packageName: "com.browser.preview", path: "" }
                 ];
             }
 
