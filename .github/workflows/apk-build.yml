@@ -24,18 +24,18 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          # Removed cache parameter to prevent pre-build warnings
 
-      - name: Initialize Capacitor Project & Web Assets
+      - name: Prepare Web Assets & Sync Capacitor
         run: |
-          npm init -y
+          if [ ! -f "package.json" ]; then
+            npm init -y
+          fi
           npm install @capacitor/core@5.7.4 @capacitor/cli@5.7.4 @capacitor/android@5.7.4
-          npx cap init GlobalXender com.globalxender.app --web-dir www
           mkdir -p www
           if [ -f "index.html" ]; then
             cp index.html www/
           fi
-          npx cap add android
+          # Only sync instead of adding android from scratch, preserving your native java code
           npx cap sync android
 
       - name: Grant Permission to Gradlew
