@@ -38,7 +38,8 @@ jobs:
             cp index.html www/
           fi
 
-          # Add android platform fresh
+          # Clear any existing android folder to prevent conflicts, then add fresh
+          rm -rf android
           npx cap add android
 
           # Inject our custom AppListPlugin.java into the generated Android project
