@@ -103,6 +103,26 @@ jobs:
           }
           EOF
 
+          # Inject AndroidManifest.xml queries permission so Android allows listing apps
+          python3 -c '
+          manifest_path = "android/app/src/main/AndroidManifest.xml"
+          with open(manifest_path, "r") as f:
+              content = f.read()
+
+          queries_tag = """
+              <queries>
+                  <intent>
+                      <action android:name="android.intent.action.MAIN" />
+                  </intent>
+              </queries>
+          """
+
+          if "<queries>" not in content:
+              content = content.replace("<application", queries_tag + "\n    <application")
+              with open(manifest_path, "w") as f:
+                  f.write(content)
+          '
+
           npx cap sync android
 
       - name: Grant Permission to Gradlew
