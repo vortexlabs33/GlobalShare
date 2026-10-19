@@ -71,6 +71,7 @@
             padding: 10px 0;
             border-top: 1px solid #334155;
             box-shadow: 0 -4px 6px rgba(0,0,0,0.2);
+            z-index: 100;
         }
         .nav-item {
             background: none;
@@ -274,13 +275,15 @@
             }
         }
 
-        // Native App Scanner Bridge Integration
+        // Robust Native App Scanner Bridge Integration with Debugging
         async function loadInstalledApps() {
             const appListContainer = document.getElementById('appList');
             appListContainer.innerHTML = "<p style='color: #fbbf24; text-align: center;'>Scanning phone apps...</p>";
 
             let appsToDisplay = [];
+            let bridgeErrorMsg = "";
 
+            // Check if Capacitor and the native plugin exist
             if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AppList) {
                 try {
                     const result = await window.Capacitor.Plugins.AppList.getInstalledApps();
@@ -288,15 +291,22 @@
                         appsToDisplay = result.apps;
                     }
                 } catch (e) {
+                    bridgeErrorMsg = e.message || JSON.stringify(e);
                     console.error("Native scan error:", e);
                 }
-            } 
+            } else {
+                bridgeErrorMsg = "Capacitor AppList plugin not detected in window object.";
+            }
             
-            // Browser fallback safety
+            // Fallback if no apps were retrieved
             if (appsToDisplay.length === 0) {
-                appsToDisplay = [
-                    { name: "Browser Preview Placeholder", packageName: "com.browser.preview", path: "" }
-                ];
+                appListContainer.innerHTML = `
+                    <div style="background: #334155; padding: 12px; border-radius: 8px; text-align: center;">
+                        <strong style="color: #ef4444; font-size: 13px; display: block; margin-bottom: 5px;">Scan Notice / Debug</strong>
+                        <p style="color: #cbd5e1; font-size: 11px; margin: 0; word-break: break-word;">${bridgeErrorMsg}</p>
+                    </div>
+                `;
+                return;
             }
 
             appListContainer.innerHTML = "";
