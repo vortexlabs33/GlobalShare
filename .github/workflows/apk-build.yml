@@ -1,4 +1,4 @@
-name: Build GlobalXender APK
+name: Build GlobalShare APK
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
             npm init -y
           fi
           npm install @capacitor/core@5.7.4 @capacitor/cli@5.7.4 @capacitor/android@5.7.4
-          npx cap init GlobalXender com.globalxender.app --web-dir www
+          npx cap init GlobalShare com.globalshare.app --web-dir www
           
           mkdir -p www
           if [ -f "index.html" ]; then
@@ -42,12 +42,12 @@ jobs:
           rm -rf android
           npx cap add android
 
-          # Inject our custom AppListPlugin.java into the generated Android project
-          mkdir -p android/app/src/main/java/com/vortexlabs/globalshare/
+          # Inject our custom AppListPlugin.java into the correct unified package path
+          mkdir -p android/app/src/main/java/com/globalshare/app/
           
           # Create AppListPlugin.java
-          cat << 'EOF' > android/app/src/main/java/com/vortexlabs/globalshare/AppListPlugin.java
-          package com.vortexlabs.globalshare;
+          cat << 'EOF' > android/app/src/main/java/com/globalshare/app/AppListPlugin.java
+          package com.globalshare.app;
 
           import android.content.Intent;
           import android.content.pm.ApplicationInfo;
@@ -70,7 +70,7 @@ jobs:
                   JSArray appList = new JSArray();
 
                   for (ApplicationInfo packageInfo : packages) {
-                      // Filter out system apps if desired, or keep all user apps
+                      // Keep user-installed apps (filter out system apps)
                       if ((packageInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
                           JSObject appObj = new JSObject();
                           appObj.put("name", pm.getApplicationLabel(packageInfo).toString());
@@ -87,9 +87,9 @@ jobs:
           }
           EOF
 
-          # Update MainActivity.java to register the plugin
-          cat << 'EOF' > android/app/src/main/java/com/vortexlabs/globalshare/MainActivity.java
-          package com.vortexlabs.globalshare;
+          # Update MainActivity.java to register the plugin under the matching package
+          cat << 'EOF' > android/app/src/main/java/com/globalshare/app/MainActivity.java
+          package com.globalshare.app;
 
           import android.os.Bundle;
           import com.getcapacitor.BridgeActivity;
@@ -115,5 +115,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GlobalXender-debug-apk
+          name: GlobalShare-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
